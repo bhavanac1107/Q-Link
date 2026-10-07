@@ -1,0 +1,4 @@
+qiskit
+qiskit-aer
+streamlit
+pytest==8.1.1
