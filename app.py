@@ -423,39 +423,40 @@ elif page == "▤ Results & Analysis":
             
             test_df = pd.read_csv("results/test_df1.csv")
             
-            c1, c2, c3 = st.columns(3)
+            c1, c2 = st.columns(2)
             
             # Chart 1: Detection vs Intercept
             with c1:
                 df_det = test_df[test_df['noise'] == 0].groupby('eve')[['RuleA_reject', 'RuleB_reject']].mean() * 100
                 fig1 = go.Figure()
-                fig1.add_trace(go.Scatter(x=df_det.index, y=df_det['RuleA_reject'], mode='lines+markers', name='Rule A (11% QBER)', line=dict(color='#60A5FA')))
-                fig1.add_trace(go.Scatter(x=df_det.index, y=df_det['RuleB_reject'], mode='lines+markers', name='Rule B (ML)', line=dict(color='#3B82F6')))
+                fig1.add_trace(go.Scatter(x=df_det.index * 100, y=df_det['RuleA_reject'], mode='lines+markers', name='Rule A (11% QBER)', line=dict(color='#60A5FA')))
+                fig1.add_trace(go.Scatter(x=df_det.index * 100, y=df_det['RuleB_reject'], mode='lines+markers', name='Rule B (ML)', line=dict(color='#3B82F6')))
                 
                 # Highlight current simulation if noise == 0
                 if res.get('noise_level', 0) == 0:
-                    curr_eve = res.get('eve_fraction', 0)
+                    curr_eve = res.get('eve_fraction', 0) * 100
                     fig1.add_vline(x=curr_eve, line_width=2, line_dash="dash", line_color="red", annotation_text="Current", annotation_position="top left", annotation_font_color="red")
                 
                 fig1.update_layout(title="Detection vs Intercept (0% Noise)", xaxis_title="Intercept Fraction (%)", yaxis_title="Detection Rate (%)", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#E8ECF8'), margin=dict(l=40, r=20, t=40, b=40), legend=dict(yanchor="bottom", y=0.01, xanchor="right", x=0.99))
-                st.caption("Note: Sessions can be rejected by the QBER > 11% rule, or by the final SHA-256 Key Confirmation failing if uncorrected errors remain.\n\n*Why might QBER be lower than 25% at 100% intercept?* Under Intercept-Resend, Eve introduces a 25% error rate on average. In any single session (e.g. ~350 sifted bits from 700 qubits), normal statistical variance means the measured QBER will fluctuate around 25% (e.g., between 20% and 30%).")
-            st.plotly_chart(fig1, use_container_width=True)
+                st.plotly_chart(fig1, use_container_width=True)
                 
             # Chart 2: False Alarm vs Noise
             with c2:
                 df_fa = test_df[test_df['eve'] == 0].groupby('noise')[['RuleA_reject', 'RuleB_reject']].mean() * 100
                 fig2 = go.Figure()
-                fig2.add_trace(go.Scatter(x=df_fa.index, y=df_fa['RuleA_reject'], mode='lines+markers', name='Rule A', line=dict(color='#60A5FA')))
-                fig2.add_trace(go.Scatter(x=df_fa.index, y=df_fa['RuleB_reject'], mode='lines+markers', name='Rule B', line=dict(color='#3B82F6')))
+                fig2.add_trace(go.Scatter(x=df_fa.index * 100, y=df_fa['RuleA_reject'], mode='lines+markers', name='Rule A', line=dict(color='#60A5FA')))
+                fig2.add_trace(go.Scatter(x=df_fa.index * 100, y=df_fa['RuleB_reject'], mode='lines+markers', name='Rule B', line=dict(color='#3B82F6')))
                 
                 # Highlight current simulation if eve == 0
                 if res.get('eve_fraction', 0) == 0:
-                    curr_noise = res.get('noise_level', 0)
+                    curr_noise = res.get('noise_level', 0) * 100
                     fig2.add_vline(x=curr_noise, line_width=2, line_dash="dash", line_color="red", annotation_text="Current", annotation_position="top left", annotation_font_color="red")
                 
                 fig2.update_layout(title="False Alarms vs Noise (0% Eve)", xaxis_title="Channel Noise (%)", yaxis_title="False Alarm Rate (%)", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#E8ECF8'), margin=dict(l=40, r=20, t=40, b=40), legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
                 st.plotly_chart(fig2, use_container_width=True)
                 
+            c3, c4 = st.columns(2)
+            
             # Chart 3: Confusion Matrix (Rule A)
             with c3:
                 true_labels = (test_df['eve'] > 0).astype(int)
@@ -480,24 +481,31 @@ elif page == "▤ Results & Analysis":
                 
                 # Determine current cell
                 curr_true = "Attacked" if res.get('eve_fraction', 0) > 0 else "Honest"
-                curr_pred = "Rejected" if res.get('qber', 0) >= 0.11 else "Accepted"
+                curr_pred = "Rejected" if res.get('status', 'ACCEPTED') == 'REJECTED' else "Accepted"
                 
                 fig3.add_annotation(
                     x=curr_pred, y=curr_true,
                     text="★ Current",
                     showarrow=False,
                     font=dict(color="red", size=14, weight="bold"),
-                    yshift=15
+                    yshift=0
                 )
                 
-                fig3.update_layout(title="Confusion Matrix (Rule A)", xaxis_title="Rule A Verdict", yaxis_title="Ground Truth", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#E8ECF8'), margin=dict(l=40, r=20, t=40, b=40))
+                fig3.update_layout(title="Confusion Matrix (11% QBER Rule)", xaxis_title="Verdict", yaxis_title="Ground Truth", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#E8ECF8'), margin=dict(l=40, r=20, t=40, b=40))
                 # Add red border to the current cell
-                fig3.add_shape(type="rect", xref="x", yref="y", x0=x.index(curr_pred)-0.5, y0=y.index(curr_true)-0.5, x1=x.index(curr_pred)+0.5, y1=y.index(curr_true)+0.5, line=dict(color="red", width=3))
+                x_idx = x.index(curr_pred)
+                y_idx = y.index(curr_true)
+                fig3.add_shape(type="rect", xref="x", yref="y", x0=x_idx-0.45, y0=y_idx-0.45, x1=x_idx+0.45, y1=y_idx+0.45, line=dict(color="red", width=3))
                 
                 st.plotly_chart(fig3, use_container_width=True)
                 
+            with c4:
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                st.caption("Note: Sessions can be rejected by the QBER > 11% rule, or by the final SHA-256 Key Confirmation failing if uncorrected errors remain.\n\n*Why might QBER be lower than 25% at 100% intercept?* Under Intercept-Resend, Eve introduces a 25% error rate on average. In any single session (e.g. ~350 sifted bits from 700 qubits), normal statistical variance means the measured QBER will fluctuate around 25% (e.g., between 20% and 30%).")
+                
         except Exception as e:
             st.error(f"Could not load evaluation data for charts: {e}")
+
 elif page == "⚷ Live Encryption Demo":
     st.markdown("## Live Encryption Demo: Secure Comms")
     st.write("Bank Branch A (Alice) wants to send a secure message to the Data Center (Bob) over an optical fiber.")
