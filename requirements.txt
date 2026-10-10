@@ -2,3 +2,8 @@ qiskit
 qiskit-aer
 streamlit
 pytest==8.1.1
+matplotlib==3.8.4
+pylatexenc==2.10
+scikit-learn
+
+plotly
