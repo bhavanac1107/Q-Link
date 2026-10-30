@@ -1,0 +1,29 @@
+# Environment and secret tokens
+.env
+*.env
+.env.*
+
+# Python virtual environment and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Backup or temporary folders
+QLink-GitHub/
+test_write.py
+

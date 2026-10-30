@@ -1,0 +1,14 @@
+# Python 3.11
+# Core dependencies for Q-Link
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+streamlit>=1.30.0
+pytest>=8.0.0
+python-dotenv>=1.0.0
+
+# Optional Qiskit extras group:
+# Install with: pip install ".[qiskit]" or pip install -r requirements.txt
+qiskit>=1.0.0
+qiskit-aer>=0.14.0
+qiskit-ibm-runtime>=0.22.0
