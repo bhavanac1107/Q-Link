@@ -15,7 +15,17 @@ from scipy.io import loadmat
 from src.data.schema import COMMON_COLUMNS, validate_dataset_dataframe
 
 
-DEFAULT_DATA_DIR = r"C:\Projects\QLink\data\raw\satellite"
+# Dynamically locate the data directory relative to repository / module root
+_module_dir = os.path.dirname(os.path.abspath(__file__))
+_repo_root = os.path.abspath(os.path.join(_module_dir, "..", ".."))
+
+_candidate_dirs = [
+    os.path.join(_repo_root, "data", "raw", "satellite"),
+    os.path.join(os.getcwd(), "data", "raw", "satellite"),
+    r"C:\Projects\QLink\data\raw\satellite",
+]
+
+DEFAULT_DATA_DIR = next((p for p in _candidate_dirs if os.path.isdir(p)), os.path.join(_repo_root, "data", "raw", "satellite"))
 
 
 def _load_dv_protocol(base_dir: str, subsample_factor: int = 1) -> List[Dict]:

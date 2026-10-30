@@ -38,7 +38,7 @@ from src.core.bb84 import BB84
 from src.core.b92 import B92
 from src.core.e91 import E91
 from src.analysis.otp_demo import run_otp_qkd_demo, bits_to_bytes, bytes_to_bits
-from src.data.loader import load_satellite_dataset
+from src.data.loader import load_satellite_dataset, DEFAULT_DATA_DIR
 
 # -- Protocol registry ------------------------------------------------
 PROTOCOLS = {
@@ -524,7 +524,7 @@ with tab5:
         full_ds = get_loaded_dataset()
 
     if full_ds.empty:
-        st.error("No dataset records could be loaded from C:\\Projects\\QLink\\data\\raw\\satellite.")
+        st.error(f"No dataset records could be loaded from `{DEFAULT_DATA_DIR}`.")
     else:
         st.markdown("#### 🔍 Filter Dataset")
         f_col1, f_col2, f_col3, f_col4 = st.columns(4)
