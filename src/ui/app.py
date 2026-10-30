@@ -15,7 +15,11 @@ import os
 import hashlib
 
 # Ensure the project root is on sys.path
-_project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_current_dir = os.path.abspath(os.path.dirname(__file__))
+if os.path.isdir(os.path.join(_current_dir, "src")):
+    _project_root = _current_dir
+else:
+    _project_root = os.path.abspath(os.path.join(_current_dir, "..", ".."))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
