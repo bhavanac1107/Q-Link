@@ -35,6 +35,10 @@ class AlertConfig:
         return 0.8 * self.qber_threshold
 
 
+import math
+import numpy as np
+
+
 def compute_alert(qber: float, config: AlertConfig = None) -> AlertLevel:
     """Return the appropriate alert level for a given QBER.
 
@@ -50,6 +54,9 @@ def compute_alert(qber: float, config: AlertConfig = None) -> AlertLevel:
     AlertLevel
         ``NORMAL``, ``WARNING`` or ``ABORT``.
     """
+    if qber is None or (isinstance(qber, float) and math.isnan(qber)):
+        return AlertLevel.ABORT
+
     cfg = config or AlertConfig()
     if qber >= cfg.qber_threshold:
         return AlertLevel.ABORT

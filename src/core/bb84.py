@@ -123,30 +123,37 @@ class BB84(Protocol):
     def estimate_qber(self) -> None:
         """Randomly sample a subset of the sifted key to estimate QBER.
 
-        The sampled bits are removed from the final key length.  If the
-        sifted key is empty we set QBER to 0 and the final key length to 0.
+        The sampled test bits are revealed publicly and strictly removed from
+        the final secret key. If the sifted key is empty, QBER is NaN and
+        final key length is 0.
         """
         sifted_indices = np.where(self.sifted_mask)[0]
         sifted_len = sifted_indices.size
         if sifted_len == 0:
-            self.qber = 0.0
+            self.qber = float("nan")
             self.sampled_mask = np.zeros(self.n, dtype=bool)
             self.final_key_len = 0
             return
-        sample_size = max(1, int(0.01 * sifted_len))
+
+        sample_size = max(1, int(0.10 * sifted_len))
         sample_indices = self.rng.choice(sifted_indices, size=sample_size, replace=False)
         self.sampled_mask = np.zeros(self.n, dtype=bool)
         self.sampled_mask[sample_indices] = True
         mismatches = self.alice_bits[sample_indices] != self.bob_bits[sample_indices]
-        self.qber = mismatches.mean()
+        self.qber = float(np.mean(mismatches))
         self.final_key_len = sifted_len - sample_size
 
     def reconcile(self) -> None:
-        """Placeholder -- no error-correction needed for Stage 1."""
+        """Classical error reconciliation placeholder.
+        No error correction is applied in this simulation model; uncorrected
+        bits are kept directly in the raw key.
+        """
         pass
 
     def privacy_amplify(self) -> None:
-        """Placeholder -- no privacy amplification needed for Stage 1."""
+        """Privacy amplification placeholder.
+        No hashing or shortening is applied beyond test bit exclusion.
+        """
         pass
 
     def build_result(self) -> ProtocolResult:
@@ -154,6 +161,13 @@ class BB84(Protocol):
         self.alert_level = compute_alert(
             self.qber, AlertConfig(self.qber_threshold)
         ).value
+        extra = {
+            "protocol": "BB84",
+            "method": "Prepare-and-measure 4-state (BB84)",
+            "sifted_count": int(self.sifted_mask.sum()),
+            "sample_size": int(self.sampled_mask.sum()),
+            "post_processing": "None (raw sifted key after sample exclusion)",
+        }
         return ProtocolResult(
             n_qubits=self.n,
             alice_bits=self.alice_bits,
@@ -167,4 +181,5 @@ class BB84(Protocol):
             qber=self.qber,
             final_key_len=self.final_key_len,
             alert_level=self.alert_level,
+            extra=extra,
         )

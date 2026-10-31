@@ -37,6 +37,7 @@ from src.simulation.backends import (
 from src.core.bb84 import BB84
 from src.core.b92 import B92
 from src.core.e91 import E91
+from src.core.event_log import EventLog
 from src.analysis.otp_demo import run_otp_qkd_demo, bits_to_bytes, bytes_to_bits
 from src.data.loader import load_satellite_dataset, DEFAULT_DATA_DIR
 
@@ -248,16 +249,33 @@ with tab1:
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Protocol", selected_proto)
-    col2.metric("QBER", f"{res.qber:.3%}")
+    qber_metric = "N/A" if np.isnan(res.qber) else f"{res.qber:.3%}"
+    col2.metric("QBER", qber_metric)
     col3.metric("Final Key Length", f"{res.final_key_len} bits")
     col4.metric("Alert Level", res.alert_level)
 
-    if res.alert_level == "ABORT":
+    # Protocol-specific diagnostic cards
+    if selected_proto == "B92":
+        col_m1, col_m2 = st.columns(2)
+        concl_cnt = res.extra.get("conclusive_count", int(res.sifted_mask.sum()))
+        concl_rate = res.extra.get("conclusive_rate", float(res.sifted_mask.mean()))
+        col_m1.metric("B92 Conclusive Detections", f"{concl_cnt} / {res.n_qubits}", help="Rounds where Bob unambiguously inferred Alice's bit")
+        col_m2.metric("Conclusive Detection Rate", f"{concl_rate:.1%}", help="Theoretical maximum for noiseless B92 is ~25%")
+    elif selected_proto == "E91":
+        col_m1, col_m2 = st.columns(2)
+        s_val = res.extra.get("chsh_s", float("nan"))
+        s_str = f"{s_val:.3f}" if not np.isnan(s_val) else "N/A"
+        col_m1.metric("CHSH Bell Parameter S", s_str, help="Quantum violation requires S > 2.0 (Max Tsirelson bound 2.828)")
+        col_m2.metric("Bell Test Status", "VIOLATED (Quantum Confirmed)" if res.extra.get("chsh_violation") else "BROKEN / CLASSICAL")
+
+    if np.isnan(res.qber):
+        st.error(f"⛔ ABORT — No sifted key bits available to evaluate QBER or generate a key.")
+    elif res.alert_level == "ABORT":
         st.error(f"⛔ ABORT — QBER ({res.qber:.2%}) exceeds abort threshold ({qber_threshold:.2%})! Key discarded.")
     elif res.alert_level == "WARNING":
-        st.warning(f"⚠️ WARNING — Elevated QBER ({res.qber:.2%}). Channel noise or eavesdropping detected.")
+        st.warning(f"⚠️ WARNING — Elevated QBER ({res.qber:.2%}) or degraded Bell correlation. Channel noise or eavesdropping detected.")
     else:
-        st.success(f"✅ NORMAL — QBER ({res.qber:.2%}) is within safe boundary. Channel secure.")
+        st.success(f"✅ NORMAL — QBER ({res.qber:.2%}) is within safe boundary (threshold: {qber_threshold:.1%}). No significant eavesdropping detected within tested sample.")
 
     eve_active = intercept_rate > 0.0
     if eve_active:
@@ -266,20 +284,7 @@ with tab1:
         st.info("🔒 Eve is **inactive** (0% intercept rate).")
 
     st.subheader("Per-Qubit Event Log")
-    log_data = {
-        "alice_bit": res.alice_bits,
-        "alice_basis": np.where(res.alice_bases == 0, "Z", "X"),
-        "bob_basis": np.where(res.bob_bases == 0, "Z", "X"),
-        "bob_bit": res.bob_bits,
-        "sifted": res.sifted_mask,
-        "sampled": res.sampled_mask,
-    }
-
-    if eve_active and res.eve_bases is not None:
-        log_data["eve_basis"] = _eve_column(res.eve_bases, "eve_basis")
-        log_data["eve_result"] = _eve_column(res.eve_results, "eve_result")
-
-    df = pd.DataFrame(log_data)
+    df = EventLog.from_result(res).to_dataframe()
     page_size = 25
     total_pages = max(1, (len(df) + page_size - 1) // page_size)
     page = st.number_input("Page", 1, total_pages, 1, key="log_page")
@@ -484,18 +489,31 @@ with tab4:
                 pname, num_qubits, error_rate, intercept_rate, qber_threshold, int(seed),
                 backend_name=selected_backend, noise_name=selected_noise,
             )
+            qber_str = "N/A" if np.isnan(r.qber) else f"{r.qber:.3%}"
+            s_val = r.extra.get("chsh_s", float("nan"))
+            chsh_str = f"{s_val:.3f}" if not np.isnan(s_val) else "N/A"
             rows.append({
                 "Protocol": pname,
-                "Backend": r.extra.get("backend", "NumPy"),
-                "Qubits Sent": r.n_qubits,
+                "Simulation Method": r.extra.get("method", pname),
+                "Signals / Pairs": r.n_qubits,
                 "Sifted Bits": int(r.sifted_mask.sum()),
-                "QBER": f"{r.qber:.3%}",
+                "Sampled Test Bits": int(r.sampled_mask.sum()),
+                "QBER": qber_str,
                 "Final Key Len": r.final_key_len,
                 "Alert Level": r.alert_level,
-                "Data Source": r.extra.get("data_source", "simulated"),
+                "CHSH Bell S": chsh_str,
+                "Backend": r.extra.get("backend", "NumPy"),
             })
         comp_df = pd.DataFrame(rows)
         st.dataframe(comp_df, use_container_width=True, hide_index=True)
+
+        st.info(
+            "📌 **Protocol Science & Metric Interpretation:**\n\n"
+            "- **BB84:** 4 states in 2 conjugate bases (Z, X). Bases match ~50% of the time during sifting.\n"
+            "- **B92:** 2 non-orthogonal states (|0>, |+>). Sifting is based on **Bob's conclusive detection**, NOT basis matching (~25% efficiency).\n"
+            "- **E91:** Entangled Bell pairs (|Φ⁺⟩). Matching angles produce the key (~22% efficiency), while non-matching angles perform the **CHSH Bell test** (quantum violation S > 2 proves entanglement).\n"
+            "- **Security Note:** A longer key or lower QBER does not imply higher security. Each protocol provides unconditional security under distinct physical implementations."
+        )
 
         st.subheader("Final Key Length by Protocol")
         bar_df = pd.DataFrame({r["Protocol"]: [r["Final Key Len"]] for r in rows})

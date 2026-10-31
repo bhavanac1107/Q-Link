@@ -214,11 +214,11 @@ class IBMHardwareBackend(Backend):
         sifted_len = sifted_indices.size
 
         if sifted_len == 0:
-            qber = 0.0
+            qber = float("nan")
             sampled_mask = np.zeros(actual_qubits, dtype=bool)
             final_key_len = 0
         else:
-            sample_size = max(1, int(0.01 * sifted_len))
+            sample_size = max(1, int(0.10 * sifted_len))
             sample_indices = rng.choice(sifted_indices, size=sample_size, replace=False)
             sampled_mask = np.zeros(actual_qubits, dtype=bool)
             sampled_mask[sample_indices] = True
