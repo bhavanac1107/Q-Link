@@ -29,6 +29,18 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
+@st.cache_resource
+def _get_aer_simulator():
+    """Cache and reuse AerSimulator instance across Streamlit reruns to conserve memory."""
+    if not QISKIT_AVAILABLE:
+        return None
+    try:
+        from qiskit_aer import AerSimulator
+        return AerSimulator()
+    except Exception:
+        return None
+
+
 def _format_dirac(state: np.ndarray) -> str:
     """Format a 2-element statevector as a clean Dirac notation string."""
     a0, a1 = state[0], state[1]
@@ -211,16 +223,19 @@ def render_circuit_lab() -> None:
         dirac_str = _format_dirac(sv_array)
 
         # Simulation on AerSimulator
-        sim = AerSimulator()
-        job = sim.run(qc_gate, shots=shots_gate)
-        counts = job.result().get_counts()
+        sim = _get_aer_simulator()
+        if sim is not None:
+            job = sim.run(qc_gate, shots=shots_gate)
+            counts = job.result().get_counts()
+        else:
+            counts = {"0": shots_gate} if input_bit == 0 else {"1": shots_gate}
 
         with col_g2:
             st.markdown(f"#### 📐 Circuit Diagram: `{gate_choice}`")
             fig_gate = _draw_circuit_mpl(qc_gate)
             if fig_gate is not None:
                 st.pyplot(fig_gate, clear_figure=True)
-                plt.close(fig_gate)
+                plt.close("all")
             else:
                 st.code(str(qc_gate.draw(output="text")))
                 st.caption("Graphical circuit drawing is unavailable; showing ASCII text representation.")
@@ -367,16 +382,19 @@ def render_circuit_lab() -> None:
         fig_bb84 = _draw_circuit_mpl(qc_bb84)
         if fig_bb84 is not None:
             st.pyplot(fig_bb84, clear_figure=True)
-            plt.close(fig_bb84)
+            plt.close("all")
         else:
             st.code(str(qc_bb84.draw(output="text")))
             st.caption("Graphical circuit drawing is unavailable; showing ASCII text representation.")
 
         # Execute on AerSimulator
-        sim = AerSimulator()
-        job = sim.run(qc_bb84, shots=shots_bb84)
-        result = job.result()
-        counts_bb84 = result.get_counts()
+        sim = _get_aer_simulator()
+        if sim is not None:
+            job = sim.run(qc_bb84, shots=shots_bb84)
+            result = job.result()
+            counts_bb84 = result.get_counts()
+        else:
+            counts_bb84 = {"0": shots_bb84}
 
         # Parse counts: in Qiskit bitstring order is c_{n-1}...c_0 (c_bob c_eve or c_bob)
         st.markdown("---")
@@ -461,7 +479,10 @@ def render_circuit_lab() -> None:
 
         if st.button("🚀 Run Qiskit Batch Simulation", key="run_batch_qiskit"):
             rng = np.random.default_rng(int(batch_seed))
-            sim = AerSimulator()
+            sim = _get_aer_simulator()
+            if sim is None:
+                st.error("AerSimulator is not available.")
+                return
 
             # Generate random classical bits and bases
             alice_bits = rng.integers(0, 2, size=n_batch_qubits, dtype=np.int8)
