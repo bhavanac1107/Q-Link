@@ -40,6 +40,7 @@ from src.core.e91 import E91
 from src.core.event_log import EventLog
 from src.analysis.otp_demo import run_otp_qkd_demo, bits_to_bytes, bytes_to_bits
 from src.data.loader import load_satellite_dataset, DEFAULT_DATA_DIR
+from src.ui.circuit_lab import render_circuit_lab
 
 # -- Protocol registry ------------------------------------------------
 PROTOCOLS = {
@@ -220,12 +221,13 @@ def _eve_column(arr, label):
 
 
 # -- Tabs --------------------------------------------------------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🧪 Single Protocol",
     "📈 QBER Analysis",
     "🔑 OTP Demo",
     "⚖️ Protocol Comparison",
     "🛰️ Dataset Analysis",
+    "🔬 Quantum Circuit Lab",
 ])
 
 # =====================================================================
@@ -693,3 +695,10 @@ with tab5:
                     f"Channel error set to `{selected_row['qber']:.3%}`. *(values from dataset, modeled)*"
                 )
                 safe_rerun()
+
+
+# =====================================================================
+# TAB 6 -- Quantum Circuit Lab
+# =====================================================================
+with tab6:
+    render_circuit_lab()
