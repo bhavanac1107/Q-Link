@@ -70,8 +70,10 @@ def _format_dirac(state: np.ndarray) -> str:
     return "0"
 
 
-def _draw_circuit_mpl(qc: QuantumCircuit) -> plt.Figure:
-    """Draw a Qiskit circuit using matplotlib with dark theme styling."""
+def _draw_circuit_mpl(qc: QuantumCircuit) -> Optional[plt.Figure]:
+    """Draw a Qiskit circuit using matplotlib with dark theme styling.
+    Returns None if matplotlib or pylatexenc drawer fails.
+    """
     try:
         fig = qc.draw(
             output="mpl",
@@ -87,11 +89,14 @@ def _draw_circuit_mpl(qc: QuantumCircuit) -> plt.Figure:
         )
         fig.patch.set_facecolor("#0e1117")
         return fig
-    except Exception:
-        # Fallback to standard matplotlib drawer
-        fig = qc.draw(output="mpl")
-        fig.patch.set_facecolor("#0e1117")
-        return fig
+    except BaseException:
+        try:
+            # Fallback to standard matplotlib drawer
+            fig = qc.draw(output="mpl")
+            fig.patch.set_facecolor("#0e1117")
+            return fig
+        except BaseException:
+            return None
 
 
 # =====================================================================
@@ -213,8 +218,12 @@ def render_circuit_lab() -> None:
         with col_g2:
             st.markdown(f"#### 📐 Circuit Diagram: `{gate_choice}`")
             fig_gate = _draw_circuit_mpl(qc_gate)
-            st.pyplot(fig_gate, clear_figure=True)
-            plt.close(fig_gate)
+            if fig_gate is not None:
+                st.pyplot(fig_gate, clear_figure=True)
+                plt.close(fig_gate)
+            else:
+                st.code(str(qc_gate.draw(output="text")))
+                st.caption("Graphical circuit drawing is unavailable; showing ASCII text representation.")
 
         st.markdown("---")
         col_m1, col_m2 = st.columns(2)
@@ -356,8 +365,12 @@ def render_circuit_lab() -> None:
         # Render Circuit Diagram
         st.markdown("#### 📐 Full Qiskit BB84 Circuit Diagram")
         fig_bb84 = _draw_circuit_mpl(qc_bb84)
-        st.pyplot(fig_bb84, clear_figure=True)
-        plt.close(fig_bb84)
+        if fig_bb84 is not None:
+            st.pyplot(fig_bb84, clear_figure=True)
+            plt.close(fig_bb84)
+        else:
+            st.code(str(qc_bb84.draw(output="text")))
+            st.caption("Graphical circuit drawing is unavailable; showing ASCII text representation.")
 
         # Execute on AerSimulator
         sim = AerSimulator()
@@ -601,7 +614,7 @@ def render_circuit_lab() -> None:
 
         with st.expander("3. Quantum Measurement & Wave Function Collapse", expanded=False):
             st.markdown(
-                "According to **Born's Rule**, measuring a state $|\psi\rangle = \alpha|0\rangle + \beta|1\rangle$ "
+                r"According to **Born's Rule**, measuring a state $|\psi\rangle = \alpha|0\rangle + \beta|1\rangle$ "
                 "in the computational basis yields outcome $0$ with probability $|\alpha|^2$ and outcome $1$ with probability $|\beta|^2$:\n\n"
                 r"$$P(0) = |\langle 0|\psi\rangle|^2 = |\alpha|^2, \quad P(1) = |\langle 1|\psi\rangle|^2 = |\beta|^2$$"
                 "\n\nCrucially, quantum measurement is an **irreversible projection**: it collapses the superposition into the measured eigenstate."

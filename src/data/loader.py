@@ -22,7 +22,6 @@ _repo_root = os.path.abspath(os.path.join(_module_dir, "..", ".."))
 _candidate_dirs = [
     os.path.join(_repo_root, "data", "raw", "satellite"),
     os.path.join(os.getcwd(), "data", "raw", "satellite"),
-    r"C:\Projects\QLink\data\raw\satellite",
 ]
 
 DEFAULT_DATA_DIR = next((p for p in _candidate_dirs if os.path.isdir(p)), os.path.join(_repo_root, "data", "raw", "satellite"))
