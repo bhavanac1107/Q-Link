@@ -265,8 +265,8 @@ Offline evaluation revealed that the model can produce excessive false alarms or
 ## Team
 
 - **Project:** Q-Link
-- **Team Name:** Add your team name
-- **Team Lead:** Add your team lead's name
+- **Team Name:** Hack Smiths
+- **Team Lead:** Bhavana C
 - **Event:** Q-Hack India 2026
 - **Track:** Open Quantum Innovation
 
